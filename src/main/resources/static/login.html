@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign In - Clinic EHR Portal</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body style="justify-content:center; align-items:center;">
+
+  <div class="card" style="max-width: 420px; width: 100%; margin: 2rem auto; box-shadow: var(--shadow-md);">
+    <div style="text-align: center; margin-bottom: 1.5rem;">
+      <a href="/index.html" class="brand" style="justify-content: center; margin-bottom: 0.5rem;">
+        <svg viewBox="0 0 24 24"><path d="M19 10.5h-5.5V5c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v5.5H5c-.83 0-1.5.67-1.5 1.5s.67 1.5 1.5 1.5h5.5V19c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5v-5.5H19c.83 0 1.5-.67 1.5-1.5s-.67-1.5-1.5-1.5z"/></svg>
+        <span>Clinic EHR Portal</span>
+      </a>
+      <h2 style="font-size: 1.35rem; font-weight: 700;">Account Sign In</h2>
+      <p style="font-size: 0.875rem; color: var(--slate-500);">Enter your credentials to access your portal</p>
+    </div>
+
+    <div id="loginAlert"></div>
+
+    <form id="loginForm">
+      <div class="form-group">
+        <label for="email">Email Address</label>
+        <input type="email" id="email" class="form-control" placeholder="name@example.com" required autocomplete="email">
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" class="form-control" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;" required autocomplete="current-password">
+      </div>
+
+      <button type="submit" id="submitBtn" class="btn btn-primary" style="width: 100%; margin-top: 0.5rem;">
+        Sign In
+      </button>
+    </form>
+
+    <div style="margin-top: 1.5rem; text-align: center; font-size: 0.875rem; color: var(--slate-600); border-top: 1px solid var(--slate-200); padding-top: 1rem;">
+      Don't have an account yet? <a href="/register.html" style="color: var(--primary); font-weight: 600; text-decoration: none;">Register as Patient</a>
+    </div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('expired')) {
+      showAlert('loginAlert', 'Your session has expired. Please sign in again.', 'info');
+    } else if (params.get('loggedOut')) {
+      showAlert('loginAlert', 'You have been safely signed out.', 'success');
+    } else if (params.get('registered')) {
+      showAlert('loginAlert', 'Patient account registered successfully! Please sign in.', 'success');
+    }
+
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearAlert('loginAlert');
+      const submitBtn = document.getElementById('submitBtn');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Signing in...';
+
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+
+      try {
+        const user = await apiFetch('/api/auth/login', {
+          method: 'POST',
+          body: { email, password }
+        });
+
+        // Redirect based on role
+        if (user.role === 'PATIENT') {
+          window.location.href = '/patient.html';
+        } else if (user.role === 'DOCTOR') {
+          window.location.href = '/doctor.html';
+        } else if (user.role === 'ADMIN') {
+          window.location.href = '/admin.html';
+        } else {
+          window.location.href = '/index.html';
+        }
+      } catch (err) {
+        showAlert('loginAlert', err.message || 'Invalid email or password', 'danger');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Sign In';
+      }
+    });
+  </script>
+</body>
+</html>

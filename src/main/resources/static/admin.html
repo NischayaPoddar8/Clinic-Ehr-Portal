@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard - Clinic EHR</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+
+  <header class="navbar">
+    <a href="/admin.html" class="brand">
+      <svg viewBox="0 0 24 24"><path d="M19 10.5h-5.5V5c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v5.5H5c-.83 0-1.5.67-1.5 1.5s.67 1.5 1.5 1.5h5.5V19c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5v-5.5H19c.83 0 1.5-.67 1.5-1.5s-.67-1.5-1.5-1.5z"/></svg>
+      <span>Admin Portal</span>
+    </a>
+    <div id="navbarUser" class="nav-links"></div>
+  </header>
+
+  <main class="main-content">
+    <div id="pageAlert"></div>
+
+    <nav class="tabs">
+      <button class="tab-btn active" onclick="switchTab('overviewTab', this)">Overview &amp; Reports</button>
+      <button class="tab-btn" onclick="switchTab('usersTab', this)">Doctors &amp; Users</button>
+      <button class="tab-btn" onclick="switchTab('appointmentsTab', this)">All Appointments</button>
+      <button class="tab-btn" onclick="switchTab('auditTab', this)">Audit Logs</button>
+    </nav>
+
+    <!-- Tab 1: Overview & Reports -->
+    <section id="overviewTab" class="tab-pane active">
+      <div class="card">
+        <div class="card-title">
+          <span>Clinic Statistics</span>
+          <button class="btn btn-secondary btn-sm" onclick="loadStats()">Refresh Stats</button>
+        </div>
+        <div id="statsGrid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:1rem;"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span>Export Appointment Report</span></div>
+        <form id="exportForm" style="display:flex; gap:0.75rem; align-items:flex-end; flex-wrap:wrap;">
+          <div class="form-group" style="margin-bottom:0;">
+            <label for="reportFrom">From Date</label>
+            <input type="date" id="reportFrom" class="form-control" required>
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label for="reportTo">To Date</label>
+            <input type="date" id="reportTo" class="form-control" required>
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label for="reportFormat">Format</label>
+            <select id="reportFormat" class="form-control">
+              <option value="csv">CSV (.csv)</option>
+              <option value="txt">Plain Text (.txt)</option>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-primary">Download Report</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- Tab 2: Doctors & Users -->
+    <section id="usersTab" class="tab-pane">
+      <div class="card">
+        <div class="card-title"><span>Onboard New Doctor</span></div>
+        <form id="createDoctorForm" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:0.75rem;">
+          <div class="form-group" style="margin-bottom:0;">
+            <label for="docFullName">Full Name</label>
+            <input type="text" id="docFullName" class="form-control" placeholder="Jane Smith" required>
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label for="docEmail">Email</label>
+            <input type="email" id="docEmail" class="form-control" placeholder="doctor@clinic.local" required>
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label for="docPassword">Initial Password</label>
+            <input type="password" id="docPassword" class="form-control" minlength="8" required>
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label for="docSpecialization">Specialization</label>
+            <input type="text" id="docSpecialization" class="form-control" placeholder="Cardiology" required>
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label for="docLicense">License Number</label>
+            <input type="text" id="docLicense" class="form-control" placeholder="MED-1001" required>
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label for="docQualification">Qualification</label>
+            <input type="text" id="docQualification" class="form-control" placeholder="MD, FACC">
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label for="docPhone">Phone</label>
+            <input type="text" id="docPhone" class="form-control" placeholder="+91-9876543210">
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label for="docSlotMinutes">Slot Minutes (10-120)</label>
+            <input type="number" id="docSlotMinutes" class="form-control" min="10" max="120" value="30">
+          </div>
+          <div style="display:flex; align-items:flex-end;">
+            <button type="submit" class="btn btn-primary" style="width:100%;">Create Doctor</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <span>User Accounts</span>
+          <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+            <select id="userRoleFilter" class="form-control" style="width:auto; padding:0.3rem 0.6rem;" onchange="resetAndLoadUsers()">
+              <option value="">ALL ROLES</option>
+              <option value="PATIENT">PATIENT</option>
+              <option value="DOCTOR">DOCTOR</option>
+              <option value="ADMIN">ADMIN</option>
+            </select>
+            <select id="userActiveFilter" class="form-control" style="width:auto; padding:0.3rem 0.6rem;" onchange="resetAndLoadUsers()">
+              <option value="">ALL STATUS</option>
+              <option value="true">ACTIVE</option>
+              <option value="false">INACTIVE</option>
+            </select>
+            <button class="btn btn-secondary btn-sm" onclick="loadUsers()">Refresh</button>
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="usersTableBody"></tbody>
+          </table>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.75rem;">
+          <button id="usersPrevBtn" class="btn btn-secondary btn-sm" onclick="changeUsersPage(-1)">Previous</button>
+          <span id="usersPageLabel" style="font-size:0.9rem;">Page 1</span>
+          <button id="usersNextBtn" class="btn btn-secondary btn-sm" onclick="changeUsersPage(1)">Next</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tab 3: All Appointments -->
+    <section id="appointmentsTab" class="tab-pane">
+      <div class="card">
+        <div class="card-title">
+          <span>Clinic Appointments</span>
+          <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+            <input type="date" id="adminApptDate" class="form-control" style="width:auto; padding:0.3rem 0.6rem;" onchange="resetAndLoadAppts()">
+            <select id="adminApptStatus" class="form-control" style="width:auto; padding:0.3rem 0.6rem;" onchange="resetAndLoadAppts()">
+              <option value="">ALL STATUS</option>
+              <option value="BOOKED">BOOKED</option>
+              <option value="COMPLETED">COMPLETED</option>
+              <option value="CANCELLED">CANCELLED</option>
+            </select>
+            <button class="btn btn-secondary btn-sm" onclick="loadAdminAppointments()">Refresh</button>
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Date &amp; Time</th>
+                <th>Doctor</th>
+                <th>Patient</th>
+                <th>Reason</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="adminApptsTableBody"></tbody>
+          </table>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.75rem;">
+          <button id="apptsPrevBtn" class="btn btn-secondary btn-sm" onclick="changeApptsPage(-1)">Previous</button>
+          <span id="apptsPageLabel" style="font-size:0.9rem;">Page 1</span>
+          <button id="apptsNextBtn" class="btn btn-secondary btn-sm" onclick="changeApptsPage(1)">Next</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tab 4: Audit Logs -->
+    <section id="auditTab" class="tab-pane">
+      <div class="card">
+        <div class="card-title">
+          <span>System Audit Trail</span>
+          <button class="btn btn-secondary btn-sm" onclick="loadAuditLogs()">Refresh</button>
+        </div>
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Timestamp</th>
+                <th>Actor</th>
+                <th>Action</th>
+                <th>Entity</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody id="auditTableBody"></tbody>
+          </table>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.75rem;">
+          <button id="auditPrevBtn" class="btn btn-secondary btn-sm" onclick="changeAuditPage(-1)">Previous</button>
+          <span id="auditPageLabel" style="font-size:0.9rem;">Page 1</span>
+          <button id="auditNextBtn" class="btn btn-secondary btn-sm" onclick="changeAuditPage(1)">Next</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/admin.js"></script>
+</body>
+</html>

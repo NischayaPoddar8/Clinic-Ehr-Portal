@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Doctor Dashboard - Clinic EHR</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+
+  <header class="navbar">
+    <a href="/doctor.html" class="brand">
+      <svg viewBox="0 0 24 24"><path d="M19 10.5h-5.5V5c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v5.5H5c-.83 0-1.5.67-1.5 1.5s.67 1.5 1.5 1.5h5.5V19c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5v-5.5H19c.83 0 1.5-.67 1.5-1.5s-.67-1.5-1.5-1.5z"/></svg>
+      <span>Doctor Dashboard</span>
+    </a>
+    <div id="navbarUser" class="nav-links"></div>
+  </header>
+
+  <main class="main-content">
+    <div id="pageAlert"></div>
+
+    <nav class="tabs">
+      <button class="tab-btn active" onclick="switchTab('scheduleTab', this)">Schedule &amp; Appointments</button>
+      <button class="tab-btn" onclick="switchTab('historyTab', this)">Patient History</button>
+      <button class="tab-btn" onclick="switchTab('availabilityTab', this)">Availability</button>
+      <button class="tab-btn" onclick="switchTab('profileTab', this)">My Profile</button>
+    </nav>
+
+    <!-- Tab 1: Schedule & Appointments -->
+    <section id="scheduleTab" class="tab-pane active">
+      <div class="card">
+        <div class="card-title">
+          <span>Appointments</span>
+          <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+            <input type="date" id="apptDate" class="form-control" style="width:auto; padding:0.3rem 0.6rem;" onchange="loadDoctorAppointments()">
+            <select id="apptStatusFilter" class="form-control" style="width:auto; padding:0.3rem 0.6rem;" onchange="loadDoctorAppointments()">
+              <option value="">ALL STATUS</option>
+              <option value="BOOKED">BOOKED</option>
+              <option value="COMPLETED">COMPLETED</option>
+              <option value="CANCELLED">CANCELLED</option>
+            </select>
+            <button class="btn btn-secondary btn-sm" onclick="loadDoctorAppointments()">Refresh</button>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Date &amp; Time</th>
+                <th>Patient</th>
+                <th>Reason</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="apptTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tab 2: Patient History -->
+    <section id="historyTab" class="tab-pane">
+      <div class="card">
+        <div class="card-title">
+          <span>Patient Medical History</span>
+        </div>
+        <div class="form-row" style="align-items:flex-end;">
+          <div class="form-group">
+            <label for="patientIdInput">Patient ID</label>
+            <input type="number" id="patientIdInput" class="form-control" placeholder="Enter patient ID">
+          </div>
+          <div class="form-group" style="flex:0;">
+            <button class="btn btn-primary" onclick="searchPatientHistory()">Search</button>
+          </div>
+        </div>
+        <div id="patientHistoryList" style="margin-top:1rem;"></div>
+      </div>
+    </section>
+
+    <!-- Tab 3: Availability -->
+    <section id="availabilityTab" class="tab-pane">
+      <div class="card">
+        <div class="card-title"><span>Add Availability Window</span></div>
+        <div id="availAlert"></div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="availDay">Day of Week</label>
+            <select id="availDay" class="form-control">
+              <option value="MONDAY">Monday</option>
+              <option value="TUESDAY">Tuesday</option>
+              <option value="WEDNESDAY">Wednesday</option>
+              <option value="THURSDAY">Thursday</option>
+              <option value="FRIDAY">Friday</option>
+              <option value="SATURDAY">Saturday</option>
+              <option value="SUNDAY">Sunday</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="availStart">Start Time</label>
+            <input type="time" id="availStart" class="form-control">
+          </div>
+          <div class="form-group">
+            <label for="availEnd">End Time</label>
+            <input type="time" id="availEnd" class="form-control">
+          </div>
+          <div class="form-group" style="flex:0; display:flex; align-items:flex-end;">
+            <button class="btn btn-primary" onclick="addAvailability()">Add Window</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:1.5rem;">
+        <div class="card-title">
+          <span>My Availability Schedule</span>
+          <button class="btn btn-secondary btn-sm" onclick="loadAvailability()">Refresh</button>
+        </div>
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr><th>Day</th><th>Start</th><th>End</th><th>Actions</th></tr>
+            </thead>
+            <tbody id="availTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tab 4: My Profile -->
+    <section id="profileTab" class="tab-pane">
+      <div class="card" style="max-width:640px;">
+        <div class="card-title"><span>Update Profile</span></div>
+        <div id="profileAlert"></div>
+        <div class="form-group">
+          <label for="profFullName">Full Name</label>
+          <input type="text" id="profFullName" class="form-control">
+        </div>
+        <div class="form-group">
+          <label for="profPhone">Phone</label>
+          <input type="text" id="profPhone" class="form-control">
+        </div>
+        <div class="form-group">
+          <label for="profSpec">Specialization</label>
+          <input type="text" id="profSpec" class="form-control">
+        </div>
+        <div class="form-group">
+          <label for="profQual">Qualification</label>
+          <input type="text" id="profQual" class="form-control">
+        </div>
+        <div class="form-group">
+          <label for="profSlot">Slot Duration (minutes)</label>
+          <input type="number" id="profSlot" class="form-control" min="10" max="120">
+        </div>
+        <button class="btn btn-primary" onclick="saveProfile()">Save Changes</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- EHR Create / Edit Modal -->
+  <div id="ehrModal" class="modal-backdrop">
+    <div class="modal" style="max-width:720px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="ehrModalTitle">Create Medical Record</h3>
+        <button class="modal-close" onclick="closeEhrModal()">&times;</button>
+      </div>
+      <div id="ehrAlert"></div>
+
+      <div class="form-group">
+        <label for="ehrDiagnosis">Diagnosis <span style="color:var(--danger);">*</span></label>
+        <input type="text" id="ehrDiagnosis" class="form-control" placeholder="Primary diagnosis">
+      </div>
+      <div class="form-group">
+        <label for="ehrNotes">Clinical Notes</label>
+        <textarea id="ehrNotes" class="form-control" rows="3" placeholder="Observations, treatment plan, follow-up notes..."></textarea>
+      </div>
+
+      <div style="margin-top:1rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+          <label style="font-weight:600; color:var(--slate-700);">Prescriptions</label>
+          <button class="btn btn-secondary btn-sm" onclick="addPrescriptionRow()">+ Add Prescription</button>
+        </div>
+        <div id="prescriptionRows"></div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeEhrModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveEhr()">Save Record</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/doctor.js"></script>
+</body>
+</html>

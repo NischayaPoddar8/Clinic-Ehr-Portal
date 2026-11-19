@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Healthcare Appointment & EHR Portal</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+
+  <header class="navbar">
+    <a href="/index.html" class="brand">
+      <svg viewBox="0 0 24 24"><path d="M19 10.5h-5.5V5c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v5.5H5c-.83 0-1.5.67-1.5 1.5s.67 1.5 1.5 1.5h5.5V19c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5v-5.5H19c.83 0 1.5-.67 1.5-1.5s-.67-1.5-1.5-1.5z"/></svg>
+      <span>Clinic EHR Portal</span>
+    </a>
+    <div id="navbarUser" class="nav-links">
+      <a href="/login.html" class="btn btn-outline btn-sm">Sign In</a>
+      <a href="/register.html" class="btn btn-primary btn-sm">Patient Register</a>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <div id="welcomeBanner" style="display:none;" class="card">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <h3 id="welcomeMsg" style="font-weight:700; color:var(--primary);">Welcome back!</h3>
+          <p class="text-muted" style="color:var(--slate-500); font-size:0.95rem;">You are currently signed in.</p>
+        </div>
+        <a id="dashboardLink" href="#" class="btn btn-primary">Go to My Portal &rarr;</a>
+      </div>
+    </div>
+
+    <section class="hero">
+      <h1>Healthcare Appointment &amp; EHR Portal</h1>
+      <p>Secure, enterprise-grade consultation scheduling and Electronic Health Records management for patients, doctors, and clinic administrators.</p>
+      <div class="hero-actions">
+        <a href="/login.html" class="btn btn-primary" style="background:#ffffff; color:#0369a1;">Sign In to Portal</a>
+        <a href="/register.html" class="btn btn-outline" style="border-color:#ffffff; color:#ffffff;">New Patient Registration</a>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-title">
+        <span>Find a Specialist</span>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="searchSpec">Specialization</label>
+          <input type="text" id="searchSpec" class="form-control" placeholder="e.g. Cardiology, Dermatology, GP">
+        </div>
+        <div class="form-group">
+          <label for="searchName">Doctor Name</label>
+          <input type="text" id="searchName" class="form-control" placeholder="Search by name...">
+        </div>
+        <div class="form-group" style="flex:0; min-width:120px; display:flex; align-items:flex-end;">
+          <button id="searchBtn" class="btn btn-primary" style="width:100%;" onclick="loadDoctors()">Search</button>
+        </div>
+      </div>
+
+      <div id="doctorList" class="grid-3" style="margin-top:1.5rem;">
+        <!-- Doctor cards dynamically populated -->
+      </div>
+    </section>
+  </main>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/auth.js"></script>
+  <script>
+    let loggedInUser = null;
+
+    async function checkAuth() {
+      loggedInUser = await getCurrentUser();
+      if (loggedInUser) {
+        initNavbarUser(loggedInUser);
+        const banner = document.getElementById('welcomeBanner');
+        const msg = document.getElementById('welcomeMsg');
+        const link = document.getElementById('dashboardLink');
+        banner.style.display = 'block';
+        msg.textContent = `Welcome back, ${loggedInUser.displayName || loggedInUser.fullName}!`;
+        if (loggedInUser.role === 'PATIENT') link.href = '/patient.html';
+        else if (loggedInUser.role === 'DOCTOR') link.href = '/doctor.html';
+        else if (loggedInUser.role === 'ADMIN') link.href = '/admin.html';
+      }
+    }
+
+    async function loadDoctors() {
+      const spec = document.getElementById('searchSpec').value.trim();
+      const name = document.getElementById('searchName').value.trim();
+      const container = document.getElementById('doctorList');
+      container.innerHTML = '<div class="empty-state"><p>Searching specialists...</p></div>';
+
+      try {
+        const params = new URLSearchParams();
+        if (spec) params.append('specialization', spec);
+        if (name) params.append('name', name);
+
+        const doctors = await apiFetch(`/api/doctors?${params.toString()}`);
+        if (!doctors || doctors.length === 0) {
+          container.innerHTML = '<div class="empty-state"><p>No doctors found matching your criteria.</p></div>';
+          return;
+        }
+
+        container.innerHTML = doctors.map(doc => `
+          <div class="card" style="margin-bottom:0;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.5rem;">
+              <h4 style="font-weight:700; color:var(--slate-800);">${escapeHtml(doc.displayName)}</h4>
+              <span class="badge badge-doctor">${escapeHtml(doc.specialization)}</span>
+            </div>
+            <p style="font-size:0.875rem; color:var(--slate-600); margin-bottom:0.25rem;">
+              <strong>Qualification:</strong> ${escapeHtml(doc.qualification || 'General Practice')}
+            </p>
+            <p style="font-size:0.875rem; color:var(--slate-600); margin-bottom:0.75rem;">
+              <strong>Consultation Slot:</strong> ${doc.slotMinutes || 30} mins
+            </p>
+            <a href="${loggedInUser && loggedInUser.role === 'PATIENT' ? '/patient.html?bookDoctor=' + doc.id : '/login.html'}"
+               class="btn btn-outline btn-sm" style="width:100%;">
+              Book Appointment &rarr;
+            </a>
+          </div>
+        `).join('');
+      } catch (e) {
+        container.innerHTML = `<div class="empty-state"><p style="color:var(--danger);">${escapeHtml(e.message)}</p></div>`;
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      checkAuth();
+      loadDoctors();
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Patient Portal - Clinic EHR</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+
+  <header class="navbar">
+    <a href="/patient.html" class="brand">
+      <svg viewBox="0 0 24 24"><path d="M19 10.5h-5.5V5c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v5.5H5c-.83 0-1.5.67-1.5 1.5s.67 1.5 1.5 1.5h5.5V19c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5v-5.5H19c.83 0 1.5-.67 1.5-1.5s-.67-1.5-1.5-1.5z"/></svg>
+      <span>Patient Portal</span>
+    </a>
+    <div id="navbarUser" class="nav-links"></div>
+  </header>
+
+  <main class="main-content">
+    <div id="pageAlert"></div>
+
+    <nav class="tabs">
+      <button class="tab-btn active" onclick="switchTab('bookTab', this)">Find Doctor &amp; Book</button>
+      <button class="tab-btn" onclick="switchTab('appointmentsTab', this)">My Appointments</button>
+      <button class="tab-btn" onclick="switchTab('recordsTab', this)">Medical Records &amp; Prescriptions</button>
+    </nav>
+
+    <!-- Tab 1: Book Consultation -->
+    <section id="bookTab" class="tab-pane active">
+      <div class="card">
+        <div class="card-title">
+          <span>Search Doctors</span>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="docSpec">Specialization</label>
+            <input type="text" id="docSpec" class="form-control" placeholder="e.g. Cardiology, GP">
+          </div>
+          <div class="form-group">
+            <label for="docName">Doctor Name</label>
+            <input type="text" id="docName" class="form-control" placeholder="Search by name...">
+          </div>
+          <div class="form-group" style="flex:0; min-width:120px; display:flex; align-items:flex-end;">
+            <button class="btn btn-primary" style="width:100%;" onclick="searchDoctors()">Search</button>
+          </div>
+        </div>
+
+        <div id="bookingDoctorsList" class="grid-3" style="margin-top:1.5rem;"></div>
+      </div>
+
+      <!-- Booking Slot Selection Panel (Shown once doctor chosen) -->
+      <div id="slotBookingPanel" class="card" style="display:none;">
+        <div class="card-title">
+          <span id="selectedDoctorName">Select a Date &amp; Available Slot</span>
+        </div>
+        <div class="form-row" style="align-items:flex-end;">
+          <div class="form-group" style="max-width:240px;">
+            <label for="slotDate">Appointment Date</label>
+            <input type="date" id="slotDate" class="form-control" onchange="loadDoctorSlots()">
+          </div>
+          <div class="form-group" style="flex:0;">
+            <button class="btn btn-secondary" onclick="loadDoctorSlots()">Refresh Slots</button>
+          </div>
+        </div>
+
+        <div id="slotsAlert"></div>
+
+        <div style="margin-top:1rem;">
+          <label style="font-size:0.875rem; font-weight:600; color:var(--slate-700);">Available Time Slots:</label>
+          <div id="slotsContainer" class="slot-grid"></div>
+        </div>
+
+        <div id="bookingFormSection" style="margin-top:1.5rem; display:none; border-top:1px solid var(--slate-200); padding-top:1.25rem;">
+          <h4 style="font-weight:700; color:var(--slate-800); margin-bottom:0.75rem;">Confirm Consultation Booking</h4>
+          <p id="bookingSlotSummary" style="font-size:0.95rem; color:var(--primary); font-weight:600; margin-bottom:0.75rem;"></p>
+          <div class="form-group">
+            <label for="bookingReason">Reason for Visit (optional)</label>
+            <textarea id="bookingReason" class="form-control" rows="2" placeholder="e.g. Routine checkup, persistent headache, prescription renewal"></textarea>
+          </div>
+          <button id="confirmBookBtn" class="btn btn-primary" onclick="confirmBooking()">Confirm &amp; Book Appointment</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tab 2: My Appointments -->
+    <section id="appointmentsTab" class="tab-pane">
+      <div class="card">
+        <div class="card-title">
+          <span>My Scheduled Appointments</span>
+          <div style="display:flex; gap:0.5rem; align-items:center;">
+            <label for="apptStatusFilter" style="font-size:0.85rem; font-weight:600; margin-bottom:0;">Status:</label>
+            <select id="apptStatusFilter" class="form-control" style="width:auto; padding:0.3rem 0.6rem;" onchange="loadMyAppointments()">
+              <option value="">ALL</option>
+              <option value="BOOKED">BOOKED</option>
+              <option value="COMPLETED">COMPLETED</option>
+              <option value="CANCELLED">CANCELLED</option>
+            </select>
+            <button class="btn btn-secondary btn-sm" onclick="loadMyAppointments()">Refresh</button>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Date &amp; Time</th>
+                <th>Doctor</th>
+                <th>Specialization</th>
+                <th>Status</th>
+                <th>Reason</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="appointmentsTableBody">
+              <!-- Loaded via patient.js -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tab 3: Medical Records -->
+    <section id="recordsTab" class="tab-pane">
+      <div class="card">
+        <div class="card-title">
+          <span>My Electronic Health Records (EHR)</span>
+          <button class="btn btn-secondary btn-sm" onclick="loadMyMedicalRecords()">Refresh</button>
+        </div>
+        <div id="medicalRecordsList">
+          <!-- Loaded via patient.js -->
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Reschedule Modal -->
+  <div id="rescheduleModal" class="modal-backdrop">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">Reschedule Appointment</h3>
+        <button class="modal-close" onclick="closeRescheduleModal()">&times;</button>
+      </div>
+      <div id="rescheduleAlert"></div>
+      <div class="form-group">
+        <label for="rescheduleDate">Choose New Date</label>
+        <input type="date" id="rescheduleDate" class="form-control" onchange="loadRescheduleSlots()">
+      </div>
+      <div class="form-group">
+        <label>Available Slots for Selected Date:</label>
+        <div id="rescheduleSlotsContainer" class="slot-grid"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeRescheduleModal()">Cancel</button>
+        <button id="confirmRescheduleBtn" class="btn btn-primary" disabled onclick="confirmReschedule()">Save New Time</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Medical Record Detail Modal -->
+  <div id="recordDetailModal" class="modal-backdrop">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title" id="recordDetailTitle">Medical Consultation Details</h3>
+        <button class="modal-close" onclick="closeRecordDetailModal()">&times;</button>
+      </div>
+      <div id="recordDetailContent"></div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeRecordDetailModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/patient.js"></script>
+</body>
+</html>

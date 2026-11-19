@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Patient Registration - Clinic EHR Portal</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body style="justify-content:center; align-items:center;">
+
+  <div class="card" style="max-width: 600px; width: 100%; margin: 2rem auto; box-shadow: var(--shadow-md);">
+    <div style="text-align: center; margin-bottom: 1.5rem;">
+      <a href="/index.html" class="brand" style="justify-content: center; margin-bottom: 0.5rem;">
+        <svg viewBox="0 0 24 24"><path d="M19 10.5h-5.5V5c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v5.5H5c-.83 0-1.5.67-1.5 1.5s.67 1.5 1.5 1.5h5.5V19c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5v-5.5H19c.83 0 1.5-.67 1.5-1.5s-.67-1.5-1.5-1.5z"/></svg>
+        <span>Clinic EHR Portal</span>
+      </a>
+      <h2 style="font-size: 1.35rem; font-weight: 700;">Patient Self-Registration</h2>
+      <p style="font-size: 0.875rem; color: var(--slate-500);">Create your patient account to schedule appointments and view your EHR records</p>
+    </div>
+
+    <div id="registerAlert"></div>
+
+    <form id="registerForm">
+      <div class="form-row">
+        <div class="form-group">
+          <label for="fullName">Full Name *</label>
+          <input type="text" id="fullName" class="form-control" placeholder="e.g. Jane Doe" required maxlength="100">
+        </div>
+        <div class="form-group">
+          <label for="email">Email Address *</label>
+          <input type="email" id="email" class="form-control" placeholder="jane@example.com" required maxlength="120">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="password">Password * (min 8 chars, 1 letter, 1 digit)</label>
+          <input type="password" id="password" class="form-control" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;" required minlength="8" maxlength="72">
+        </div>
+        <div class="form-group">
+          <label for="phone">Phone Number</label>
+          <input type="tel" id="phone" class="form-control" placeholder="+1 555-0199">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="dateOfBirth">Date of Birth *</label>
+          <input type="date" id="dateOfBirth" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label for="gender">Gender *</label>
+          <select id="gender" class="form-control" required>
+            <option value="">Select Gender</option>
+            <option value="FEMALE">Female</option>
+            <option value="MALE">Male</option>
+            <option value="OTHER">Other</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="bloodGroup">Blood Group</label>
+          <select id="bloodGroup" class="form-control">
+            <option value="">Select Blood Group</option>
+            <option value="A+">A+</option>
+            <option value="A-">A-</option>
+            <option value="B+">B+</option>
+            <option value="B-">B-</option>
+            <option value="AB+">AB+</option>
+            <option value="AB-">AB-</option>
+            <option value="O+">O+</option>
+            <option value="O-">O-</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="emergencyContact">Emergency Contact</label>
+          <input type="text" id="emergencyContact" class="form-control" placeholder="Name &amp; Phone">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="address">Residential Address</label>
+        <textarea id="address" class="form-control" rows="2" placeholder="Street, City, Zip"></textarea>
+      </div>
+
+      <button type="submit" id="submitBtn" class="btn btn-primary" style="width: 100%; margin-top: 0.5rem;">
+        Complete Registration
+      </button>
+    </form>
+
+    <div style="margin-top: 1.5rem; text-align: center; font-size: 0.875rem; color: var(--slate-600); border-top: 1px solid var(--slate-200); padding-top: 1rem;">
+      Already registered? <a href="/login.html" style="color: var(--primary); font-weight: 600; text-decoration: none;">Sign in here</a>
+    </div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script>
+    // Max date for DOB is yesterday
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    document.getElementById('dateOfBirth').max = yesterday.toISOString().split('T')[0];
+
+    document.getElementById('registerForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearAlert('registerAlert');
+      const submitBtn = document.getElementById('submitBtn');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Registering...';
+
+      const payload = {
+        fullName: document.getElementById('fullName').value.trim(),
+        email: document.getElementById('email').value.trim(),
+        password: document.getElementById('password').value,
+        phone: document.getElementById('phone').value.trim() || null,
+        dateOfBirth: document.getElementById('dateOfBirth').value,
+        gender: document.getElementById('gender').value,
+        bloodGroup: document.getElementById('bloodGroup').value || null,
+        emergencyContact: document.getElementById('emergencyContact').value.trim() || null,
+        address: document.getElementById('address').value.trim() || null
+      };
+
+      try {
+        await apiFetch('/api/auth/register', {
+          method: 'POST',
+          body: payload
+        });
+        window.location.href = '/login.html?registered=true';
+      } catch (err) {
+        showAlert('registerAlert', err.message || 'Registration failed', 'danger');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Complete Registration';
+      }
+    });
+  </script>
+</body>
+</html>
