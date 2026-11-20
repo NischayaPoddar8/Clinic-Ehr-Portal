@@ -64,17 +64,19 @@
       <div class="card">
         <div class="card-title">
           <span>Patient Medical History</span>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="resetPatientDirectory()">All My Patients</button>
         </div>
         <div class="form-row" style="align-items:flex-end;">
           <div class="form-group">
-            <label for="patientIdInput">Patient ID</label>
-            <input type="number" id="patientIdInput" class="form-control" placeholder="Enter patient ID">
+            <label for="patientIdInput">Filter by Patient Name or ID</label>
+            <input type="text" id="patientIdInput" class="form-control" placeholder="Type patient name or numeric ID..." oninput="filterDoctorPatients()">
           </div>
           <div class="form-group" style="flex:0;">
-            <button class="btn btn-primary" onclick="searchPatientHistory()">Search</button>
+            <button class="btn btn-primary" onclick="searchPatientHistory()">Load Records</button>
           </div>
         </div>
-        <div id="patientHistoryList" style="margin-top:1rem;"></div>
+        <div id="doctorPatientsDirectory" style="margin-top:1rem;"></div>
+        <div id="patientHistoryList" style="margin-top:1.25rem;"></div>
       </div>
     </section>
 

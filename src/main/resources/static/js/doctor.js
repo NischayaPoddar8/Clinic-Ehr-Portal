@@ -15,6 +15,7 @@ function switchTab(tabId, btn) {
   btn.classList.add('active');
 
   if (tabId === 'scheduleTab') loadDoctorAppointments();
+  if (tabId === 'historyTab') loadDoctorPatientsDirectory();
   if (tabId === 'availabilityTab') loadAvailability();
 }
 
@@ -90,20 +91,118 @@ async function cancelAppointment(id) {
   }
 }
 
+let cachedDoctorPatients = [];
+
+async function loadDoctorPatientsDirectory() {
+  const dirEl = document.getElementById('doctorPatientsDirectory');
+  if (!dirEl) return;
+  dirEl.innerHTML = '<p style="color:var(--slate-500);font-size:0.9rem;">Loading your patients...</p>';
+
+  try {
+    const appts = await apiFetch('/api/doctor/appointments');
+    const byPatient = new Map();
+    (appts || []).forEach(a => {
+      if (!byPatient.has(a.patientId)) {
+        byPatient.set(a.patientId, {
+          patientId: a.patientId,
+          patientName: a.patientName || 'Unknown',
+          visits: 0,
+          lastVisit: a.startTime
+        });
+      }
+      const entry = byPatient.get(a.patientId);
+      entry.visits += 1;
+      if (a.startTime && (!entry.lastVisit || a.startTime > entry.lastVisit)) {
+        entry.lastVisit = a.startTime;
+      }
+    });
+    cachedDoctorPatients = Array.from(byPatient.values())
+      .sort((a, b) => a.patientName.localeCompare(b.patientName));
+    filterDoctorPatients();
+  } catch (err) {
+    dirEl.innerHTML = '<p class="empty-state">Could not load patient list.</p>';
+  }
+}
+
+function filterDoctorPatients() {
+  const dirEl = document.getElementById('doctorPatientsDirectory');
+  if (!dirEl) return;
+  const q = document.getElementById('patientIdInput').value.trim().toLowerCase();
+  const matches = cachedDoctorPatients.filter(p =>
+    !q ||
+    String(p.patientId) === q ||
+    String(p.patientId).includes(q) ||
+    p.patientName.toLowerCase().includes(q)
+  );
+
+  if (matches.length === 0) {
+    dirEl.innerHTML = '<p class="empty-state" style="padding:1rem;">No matching patients in your appointments.</p>';
+    return;
+  }
+
+  dirEl.innerHTML = `
+    <div class="table-responsive">
+      <table>
+        <thead>
+          <tr>
+            <th>Patient ID</th>
+            <th>Patient Name</th>
+            <th>Appointments</th>
+            <th>Latest Visit</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${matches.map(p => `
+            <tr>
+              <td>#${p.patientId}</td>
+              <td style="font-weight:600;color:var(--slate-800);">${escapeHtml(p.patientName)}</td>
+              <td>${p.visits}</td>
+              <td>${p.lastVisit ? formatDate(p.lastVisit) : '-'}</td>
+              <td>
+                <button type="button" class="btn btn-primary btn-sm" onclick="selectPatientForHistory(${p.patientId})">View Records</button>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function resetPatientDirectory() {
+  document.getElementById('patientIdInput').value = '';
+  document.getElementById('patientHistoryList').innerHTML = '';
+  filterDoctorPatients();
+}
+
+function selectPatientForHistory(patientId) {
+  document.getElementById('patientIdInput').value = patientId;
+  filterDoctorPatients();
+  searchPatientHistory(patientId);
+}
+
 function viewPatientHistory(patientId) {
   const historyBtn = Array.from(document.querySelectorAll('.tab-btn'))
     .find(b => b.getAttribute('onclick')?.includes('historyTab'));
   if (historyBtn) switchTab('historyTab', historyBtn);
-  document.getElementById('patientIdInput').value = patientId;
-  searchPatientHistory();
+  selectPatientForHistory(patientId);
 }
 
 // -- Patient History --
-async function searchPatientHistory() {
-  const patientId = document.getElementById('patientIdInput').value.trim();
-  if (!patientId) {
-    showAlert('pageAlert', 'Please enter a patient ID.');
-    return;
+async function searchPatientHistory(explicitId) {
+  const raw = explicitId !== undefined ? String(explicitId) : document.getElementById('patientIdInput').value.trim();
+  let patientId = raw;
+
+  if (!/^\d+$/.test(patientId)) {
+    const matched = cachedDoctorPatients.filter(p => p.patientName.toLowerCase().includes(raw.toLowerCase()));
+    if (matched.length === 1) {
+      patientId = String(matched[0].patientId);
+      document.getElementById('patientIdInput').value = patientId;
+    } else {
+      showAlert('pageAlert', 'Select a patient from the table below or enter a numeric Patient ID.');
+      return;
+    }
   }
 
   const listEl = document.getElementById('patientHistoryList');
@@ -121,7 +220,7 @@ async function searchPatientHistory() {
           <div>
             <div style="font-weight:700; color:var(--slate-800);">${escapeHtml(r.diagnosis || 'No diagnosis')}</div>
             <div style="color:var(--slate-500); font-size:0.85rem; margin-top:0.25rem;">
-              ${escapeHtml(r.patientName || '-')} &bull; ${formatDate(r.appointmentStartTime)}
+              ${escapeHtml(r.patientName || '-')} (ID: #${r.patientId}) &bull; ${formatDate(r.appointmentStartTime)}
             </div>
             <div style="margin-top:0.5rem; color:var(--slate-600); font-size:0.9rem;">
               ${escapeHtml(r.notes || '')}
