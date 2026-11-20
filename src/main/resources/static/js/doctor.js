@@ -1,5 +1,5 @@
 /**
- * doctor.js: Doctor Dashboard — Appointments, Patient History,
+ * doctor.js: Doctor Dashboard â€” Appointments, Patient History,
  * Availability Management, Profile, and EHR (Medical Records).
  */
 
@@ -7,7 +7,7 @@ let currentUser = null;
 let ehrAppointmentId = null;
 let ehrRecordId = null;  // null = create mode, number = edit mode
 
-// ── Tab switching ────────────────────────────────────────────────────────────
+// -- Tab switching --
 function switchTab(tabId, btn) {
   document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -16,10 +16,9 @@ function switchTab(tabId, btn) {
 
   if (tabId === 'scheduleTab') loadDoctorAppointments();
   if (tabId === 'availabilityTab') loadAvailability();
-  if (tabId === 'profileTab') loadProfile();
 }
 
-// ── Appointments ─────────────────────────────────────────────────────────────
+// -- Appointments --
 async function loadDoctorAppointments() {
   const date = document.getElementById('apptDate').value;
   const status = document.getElementById('apptStatusFilter').value;
@@ -42,19 +41,23 @@ async function loadDoctorAppointments() {
       return `
         <tr>
           <td>${formatDateTime(a.startTime)}</td>
-          <td>${escapeHtml(a.patientName || '-')}</td>
+          <td>
+            <div style="font-weight:600;color:var(--slate-800);">${escapeHtml(a.patientName || '-')}</div>
+            <div style="font-size:0.78rem;color:var(--slate-500);">ID: #${a.patientId}</div>
+          </td>
           <td>${escapeHtml(a.reason || '-')}</td>
           <td>${getBadgeHtml(a.status)}</td>
           <td style="white-space:nowrap;">
             ${isBooked ? `
               <button class="btn btn-primary btn-sm" onclick="completeAppointment(${a.id})" style="margin-right:0.25rem;">Complete</button>
-              <button class="btn btn-secondary btn-sm" onclick="cancelAppointment(${a.id})">Cancel</button>
+              <button class="btn btn-secondary btn-sm" onclick="cancelAppointment(${a.id})" style="margin-right:0.25rem;">Cancel</button>
             ` : ''}
             ${isCompleted ? `
-              <button class="btn btn-secondary btn-sm" onclick="openEhrModal(${a.id}, null, ${a.patientId})">
+              <button class="btn btn-secondary btn-sm" onclick="openEhrModal(${a.id}, ${a.medicalRecordId ?? 'null'}, ${a.patientId})" style="margin-right:0.25rem;">
                 ${a.medicalRecordId ? 'Edit EHR' : 'Create EHR'}
               </button>
             ` : ''}
+            <button class="btn btn-outline btn-sm" onclick="viewPatientHistory(${a.patientId})">History</button>
           </td>
         </tr>
       `;
@@ -87,7 +90,15 @@ async function cancelAppointment(id) {
   }
 }
 
-// ── Patient History ──────────────────────────────────────────────────────────
+function viewPatientHistory(patientId) {
+  const historyBtn = Array.from(document.querySelectorAll('.tab-btn'))
+    .find(b => b.getAttribute('onclick')?.includes('historyTab'));
+  if (historyBtn) switchTab('historyTab', historyBtn);
+  document.getElementById('patientIdInput').value = patientId;
+  searchPatientHistory();
+}
+
+// -- Patient History --
 async function searchPatientHistory() {
   const patientId = document.getElementById('patientIdInput').value.trim();
   if (!patientId) {
@@ -131,20 +142,30 @@ async function searchPatientHistory() {
   }
 }
 
-// ── Availability ─────────────────────────────────────────────────────────────
+// -- Availability --
+let cachedAvailability = [];
+
+function selectPresetDays(days) {
+  const set = new Set(days);
+  document.querySelectorAll('#availDayPills input[type="checkbox"]').forEach(cb => {
+    cb.checked = set.has(cb.value);
+  });
+}
+
 async function loadAvailability() {
   const tbody = document.getElementById('availTableBody');
   tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--slate-500);">Loading...</td></tr>';
 
   try {
     const avails = await apiFetch('/api/doctor/availability');
-    if (!avails || avails.length === 0) {
+    cachedAvailability = avails || [];
+    if (cachedAvailability.length === 0) {
       tbody.innerHTML = '<tr><td colspan="4" class="empty-state">No availability windows set.</td></tr>';
       return;
     }
     const dayOrder = ['MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY','SUNDAY'];
-    avails.sort((a, b) => dayOrder.indexOf(a.dayOfWeek) - dayOrder.indexOf(b.dayOfWeek));
-    tbody.innerHTML = avails.map(a => `
+    cachedAvailability.sort((a, b) => dayOrder.indexOf(a.dayOfWeek) - dayOrder.indexOf(b.dayOfWeek) || a.startTime.localeCompare(b.startTime));
+    tbody.innerHTML = cachedAvailability.map(a => `
       <tr>
         <td>${a.dayOfWeek.charAt(0) + a.dayOfWeek.slice(1).toLowerCase()}</td>
         <td>${a.startTime}</td>
@@ -158,23 +179,46 @@ async function loadAvailability() {
 }
 
 async function addAvailability() {
-  const dayOfWeek = document.getElementById('availDay').value;
+  const days = Array.from(document.querySelectorAll('#availDayPills input[type="checkbox"]:checked')).map(cb => cb.value);
   const startTime = document.getElementById('availStart').value;
   const endTime = document.getElementById('availEnd').value;
 
+  if (days.length === 0) {
+    showAlert('availAlert', 'Please select at least one working day.');
+    return;
+  }
   if (!startTime || !endTime) {
     showAlert('availAlert', 'Please set both start and end times.');
     return;
   }
 
-  try {
-    await apiFetch('/api/doctor/availability', { method: 'POST', body: { dayOfWeek, startTime, endTime } });
-    clearAlert('availAlert');
-    showAlert('availAlert', 'Availability window added.', 'success');
-    loadAvailability();
-  } catch (err) {
-    showAlert('availAlert', err.message || 'Failed to add availability.');
+  const btn = document.getElementById('addAvailBtn');
+  btn.disabled = true;
+  btn.textContent = 'Saving...';
+
+  let added = 0;
+  const errors = [];
+  for (const dayOfWeek of days) {
+    try {
+      await apiFetch('/api/doctor/availability', { method: 'POST', body: { dayOfWeek, startTime, endTime } });
+      added++;
+    } catch (err) {
+      const label = dayOfWeek.charAt(0) + dayOfWeek.slice(1).toLowerCase();
+      errors.push(`${label}: ${err.message || 'failed'}`);
+    }
   }
+
+  btn.disabled = false;
+  btn.textContent = 'Add Schedule';
+
+  if (errors.length === 0) {
+    showAlert('availAlert', `Added schedule for ${added} day(s).`, 'success');
+  } else if (added > 0) {
+    showAlert('availAlert', `Added ${added} day(s); skipped ${errors.join('; ')}`, 'danger');
+  } else {
+    showAlert('availAlert', errors.join('; '), 'danger');
+  }
+  loadAvailability();
 }
 
 async function deleteAvailability(id) {
@@ -187,35 +231,21 @@ async function deleteAvailability(id) {
   }
 }
 
-// ── Profile ──────────────────────────────────────────────────────────────────
-function loadProfile() {
-  if (!currentUser) return;
-  document.getElementById('profFullName').value = currentUser.fullName || '';
-  document.getElementById('profPhone').value = currentUser.phone || '';
-  document.getElementById('profSpec').value = currentUser.specialization || '';
-  document.getElementById('profQual').value = currentUser.qualification || '';
-  document.getElementById('profSlot').value = currentUser.slotMinutes || 30;
-}
-
-async function saveProfile() {
-  const body = {
-    fullName: document.getElementById('profFullName').value.trim(),
-    phone: document.getElementById('profPhone').value.trim(),
-    specialization: document.getElementById('profSpec').value.trim(),
-    qualification: document.getElementById('profQual').value.trim(),
-    slotMinutes: parseInt(document.getElementById('profSlot').value, 10) || 30
-  };
-
+async function clearAllAvailability() {
+  if (!cachedAvailability || cachedAvailability.length === 0) return;
+  if (!confirm(`Remove all ${cachedAvailability.length} availability window(s)?`)) return;
   try {
-    const updated = await apiFetch('/api/doctor/profile', { method: 'PUT', body });
-    currentUser = { ...currentUser, ...updated };
-    showAlert('profileAlert', 'Profile updated successfully.', 'success');
+    await Promise.all(cachedAvailability.map(a => apiFetch(`/api/doctor/availability/${a.id}`, { method: 'DELETE' })));
+    showAlert('availAlert', 'All availability windows removed.', 'success');
+    loadAvailability();
   } catch (err) {
-    showAlert('profileAlert', err.message || 'Failed to save profile.');
+    showAlert('availAlert', err.message || 'Failed to clear all availability.');
+    loadAvailability();
   }
 }
 
-// ── EHR Modal ────────────────────────────────────────────────────────────────
+
+// -- EHR Modal --
 async function openEhrModal(appointmentId, recordId, patientId) {
   ehrAppointmentId = appointmentId;
   ehrRecordId = recordId;
@@ -307,7 +337,7 @@ async function saveEhr() {
   }
 }
 
-// ── Page Init ────────────────────────────────────────────────────────────────
+// -- Page Init --
 (async function init() {
   currentUser = await requireAuth(['DOCTOR']);
   if (!currentUser) return;

@@ -23,7 +23,6 @@
       <button class="tab-btn active" onclick="switchTab('scheduleTab', this)">Schedule &amp; Appointments</button>
       <button class="tab-btn" onclick="switchTab('historyTab', this)">Patient History</button>
       <button class="tab-btn" onclick="switchTab('availabilityTab', this)">Availability</button>
-      <button class="tab-btn" onclick="switchTab('profileTab', this)">My Profile</button>
     </nav>
 
     <!-- Tab 1: Schedule & Appointments -->
@@ -82,21 +81,28 @@
     <!-- Tab 3: Availability -->
     <section id="availabilityTab" class="tab-pane">
       <div class="card">
-        <div class="card-title"><span>Add Availability Window</span></div>
-        <div id="availAlert"></div>
-        <div class="form-row">
-          <div class="form-group">
-            <label for="availDay">Day of Week</label>
-            <select id="availDay" class="form-control">
-              <option value="MONDAY">Monday</option>
-              <option value="TUESDAY">Tuesday</option>
-              <option value="WEDNESDAY">Wednesday</option>
-              <option value="THURSDAY">Thursday</option>
-              <option value="FRIDAY">Friday</option>
-              <option value="SATURDAY">Saturday</option>
-              <option value="SUNDAY">Sunday</option>
-            </select>
+        <div class="card-title">
+          <span>Add Availability Window</span>
+          <div style="display:flex; gap:0.4rem;">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="selectPresetDays(['MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY'])">Mon&ndash;Fri</button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="selectPresetDays(['MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY','SUNDAY'])">All Days</button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="selectPresetDays([])">Clear</button>
           </div>
+        </div>
+        <div id="availAlert"></div>
+        <div class="form-group" style="margin-bottom:1rem;">
+          <label>Select Working Days</label>
+          <div id="availDayPills" style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-top:0.35rem;">
+            <label style="cursor:pointer; display:inline-flex; align-items:center; gap:0.35rem; padding:0.4rem 0.75rem; border:1px solid var(--slate-300); border-radius:0.5rem; font-size:0.875rem; user-select:none;"><input type="checkbox" value="MONDAY" checked> Mon</label>
+            <label style="cursor:pointer; display:inline-flex; align-items:center; gap:0.35rem; padding:0.4rem 0.75rem; border:1px solid var(--slate-300); border-radius:0.5rem; font-size:0.875rem; user-select:none;"><input type="checkbox" value="TUESDAY" checked> Tue</label>
+            <label style="cursor:pointer; display:inline-flex; align-items:center; gap:0.35rem; padding:0.4rem 0.75rem; border:1px solid var(--slate-300); border-radius:0.5rem; font-size:0.875rem; user-select:none;"><input type="checkbox" value="WEDNESDAY" checked> Wed</label>
+            <label style="cursor:pointer; display:inline-flex; align-items:center; gap:0.35rem; padding:0.4rem 0.75rem; border:1px solid var(--slate-300); border-radius:0.5rem; font-size:0.875rem; user-select:none;"><input type="checkbox" value="THURSDAY" checked> Thu</label>
+            <label style="cursor:pointer; display:inline-flex; align-items:center; gap:0.35rem; padding:0.4rem 0.75rem; border:1px solid var(--slate-300); border-radius:0.5rem; font-size:0.875rem; user-select:none;"><input type="checkbox" value="FRIDAY" checked> Fri</label>
+            <label style="cursor:pointer; display:inline-flex; align-items:center; gap:0.35rem; padding:0.4rem 0.75rem; border:1px solid var(--slate-300); border-radius:0.5rem; font-size:0.875rem; user-select:none;"><input type="checkbox" value="SATURDAY"> Sat</label>
+            <label style="cursor:pointer; display:inline-flex; align-items:center; gap:0.35rem; padding:0.4rem 0.75rem; border:1px solid var(--slate-300); border-radius:0.5rem; font-size:0.875rem; user-select:none;"><input type="checkbox" value="SUNDAY"> Sun</label>
+          </div>
+        </div>
+        <div class="form-row">
           <div class="form-group">
             <label for="availStart">Start Time</label>
             <input type="time" id="availStart" class="form-control">
@@ -106,7 +112,7 @@
             <input type="time" id="availEnd" class="form-control">
           </div>
           <div class="form-group" style="flex:0; display:flex; align-items:flex-end;">
-            <button class="btn btn-primary" onclick="addAvailability()">Add Window</button>
+            <button id="addAvailBtn" class="btn btn-primary" onclick="addAvailability()">Add Schedule</button>
           </div>
         </div>
       </div>
@@ -114,7 +120,10 @@
       <div class="card" style="margin-top:1.5rem;">
         <div class="card-title">
           <span>My Availability Schedule</span>
-          <button class="btn btn-secondary btn-sm" onclick="loadAvailability()">Refresh</button>
+          <div style="display:flex; gap:0.5rem;">
+            <button class="btn btn-secondary btn-sm" onclick="clearAllAvailability()">Clear All</button>
+            <button class="btn btn-secondary btn-sm" onclick="loadAvailability()">Refresh</button>
+          </div>
         </div>
         <div class="table-responsive">
           <table>
@@ -124,35 +133,6 @@
             <tbody id="availTableBody"></tbody>
           </table>
         </div>
-      </div>
-    </section>
-
-    <!-- Tab 4: My Profile -->
-    <section id="profileTab" class="tab-pane">
-      <div class="card" style="max-width:640px;">
-        <div class="card-title"><span>Update Profile</span></div>
-        <div id="profileAlert"></div>
-        <div class="form-group">
-          <label for="profFullName">Full Name</label>
-          <input type="text" id="profFullName" class="form-control">
-        </div>
-        <div class="form-group">
-          <label for="profPhone">Phone</label>
-          <input type="text" id="profPhone" class="form-control">
-        </div>
-        <div class="form-group">
-          <label for="profSpec">Specialization</label>
-          <input type="text" id="profSpec" class="form-control">
-        </div>
-        <div class="form-group">
-          <label for="profQual">Qualification</label>
-          <input type="text" id="profQual" class="form-control">
-        </div>
-        <div class="form-group">
-          <label for="profSlot">Slot Duration (minutes)</label>
-          <input type="number" id="profSlot" class="form-control" min="10" max="120">
-        </div>
-        <button class="btn btn-primary" onclick="saveProfile()">Save Changes</button>
       </div>
     </section>
   </main>

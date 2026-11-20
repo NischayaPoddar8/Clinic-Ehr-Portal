@@ -1,5 +1,5 @@
 /**
- * patient.js: Patient Portal — Doctor Search, Appointment Booking,
+ * patient.js: Patient Portal â€” Doctor Search, Appointment Booking,
  * Reschedule, and Medical Records.
  */
 
@@ -9,7 +9,7 @@ let rescheduleAppointmentId = null;
 let rescheduleDoctorId = null;
 let rescheduleSelectedSlot = null;
 
-// ── Tab switching ────────────────────────────────────────────────────────────
+// -- Tab switching --
 function switchTab(tabId, btn) {
   document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -20,7 +20,7 @@ function switchTab(tabId, btn) {
   if (tabId === 'recordsTab') loadMyMedicalRecords();
 }
 
-// ── Doctor Search & Slot Booking ────────────────────────────────────────────
+// -- Doctor Search & Slot Booking --
 async function searchDoctors() {
   const spec = document.getElementById('docSpec').value.trim();
   const name = document.getElementById('docName').value.trim();
@@ -39,7 +39,6 @@ async function searchDoctors() {
     }
     listEl.innerHTML = doctors.map(d => `
       <div class="doctor-card">
-        <div class="doctor-avatar">${escapeHtml((d.displayName || d.fullName || 'Dr').charAt(0).toUpperCase())}</div>
         <div class="doctor-info">
           <div class="doctor-name">${escapeHtml(d.displayName || d.fullName)}</div>
           <div class="doctor-spec">${escapeHtml(d.specialization || 'General')}</div>
@@ -62,17 +61,21 @@ async function searchDoctors() {
 function selectDoctorForBooking(id, name) {
   selectedDoctorId = id;
   selectedSlotTime = null;
-  document.getElementById('selectedDoctorName').textContent = `Book with ${name} — Select Date & Slot`;
+  document.getElementById('selectedDoctorName').textContent = `Book with ${name} - Select Date & Slot`;
   document.getElementById('slotBookingPanel').style.display = '';
   document.getElementById('slotsContainer').innerHTML = '';
   document.getElementById('bookingFormSection').style.display = 'none';
   clearAlert('slotsAlert');
 
-  // Set min date to tomorrow
+  // Set booking window: tomorrow through +14 days
+  const toLocalIso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
+  const maxDate = new Date();
+  maxDate.setDate(maxDate.getDate() + 14);
   const slotDateInput = document.getElementById('slotDate');
-  slotDateInput.min = tomorrow.toISOString().split('T')[0];
+  slotDateInput.min = toLocalIso(tomorrow);
+  slotDateInput.max = toLocalIso(maxDate);
   slotDateInput.value = '';
 
   document.getElementById('slotBookingPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -110,7 +113,7 @@ function selectSlot(startTime, endTime, btn) {
   document.querySelectorAll('#slotsContainer .slot-btn').forEach(b => b.classList.remove('selected'));
   btn.classList.add('selected');
   document.getElementById('bookingSlotSummary').textContent =
-    `Selected: ${formatDateTime(startTime)} → ${formatTime(endTime)}`;
+    `Selected: ${formatDateTime(startTime)} -> ${formatTime(endTime)}`;
   document.getElementById('bookingFormSection').style.display = '';
 }
 
@@ -150,7 +153,7 @@ async function confirmBooking() {
   }
 }
 
-// ── My Appointments ──────────────────────────────────────────────────────────
+// -- My Appointments --
 async function loadMyAppointments() {
   const status = document.getElementById('apptStatusFilter').value;
   const params = new URLSearchParams();
@@ -200,16 +203,20 @@ async function cancelAppointment(id) {
   }
 }
 
-// ── Reschedule Modal ─────────────────────────────────────────────────────────
+// -- Reschedule Modal --
 function openRescheduleModal(appointmentId, doctorId) {
   rescheduleAppointmentId = appointmentId;
   rescheduleDoctorId = doctorId;
   rescheduleSelectedSlot = null;
 
+  const toLocalIso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
+  const maxDate = new Date();
+  maxDate.setDate(maxDate.getDate() + 14);
   const dateInput = document.getElementById('rescheduleDate');
-  dateInput.min = tomorrow.toISOString().split('T')[0];
+  dateInput.min = toLocalIso(tomorrow);
+  dateInput.max = toLocalIso(maxDate);
   dateInput.value = '';
 
   document.getElementById('rescheduleSlotsContainer').innerHTML = '';
@@ -277,7 +284,7 @@ function closeRescheduleModal() {
   document.getElementById('rescheduleModal').classList.remove('open');
 }
 
-// ── Medical Records ──────────────────────────────────────────────────────────
+// -- Medical Records --
 async function loadMyMedicalRecords() {
   const listEl = document.getElementById('medicalRecordsList');
   listEl.innerHTML = '<p style="color:var(--slate-500);">Loading records...</p>';
@@ -320,7 +327,7 @@ async function openRecordDetail(id) {
   try {
     const r = await apiFetch(`/api/patient/medical-records/${id}`);
     document.getElementById('recordDetailTitle').textContent =
-      `Consultation — ${formatDate(r.appointmentStartTime)}`;
+      `Consultation - ${formatDate(r.appointmentStartTime)}`;
 
     let prescriptionsHtml = '';
     if (r.prescriptions && r.prescriptions.length > 0) {
@@ -354,7 +361,7 @@ async function openRecordDetail(id) {
       </div>
       <div style="margin-bottom:0.75rem;">
         <span style="font-size:0.8rem; color:var(--slate-500);">Appointment</span>
-        <div>${formatDateTime(r.appointmentStartTime)} → ${formatTime(r.appointmentEndTime)}</div>
+        <div>${formatDateTime(r.appointmentStartTime)} -> ${formatTime(r.appointmentEndTime)}</div>
       </div>
       <div style="margin-bottom:0.75rem;">
         <span style="font-size:0.8rem; color:var(--slate-500);">Diagnosis</span>
@@ -381,7 +388,7 @@ function closeRecordDetailModal() {
   document.getElementById('recordDetailModal').classList.remove('open');
 }
 
-// ── Page Init ────────────────────────────────────────────────────────────────
+// -- Page Init --
 (async function init() {
   const user = await requireAuth(['PATIENT']);
   if (!user) return;

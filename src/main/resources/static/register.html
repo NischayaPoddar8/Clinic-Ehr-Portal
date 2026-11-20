@@ -97,10 +97,10 @@
 
   <script src="/js/api.js"></script>
   <script>
-    // Max date for DOB is yesterday
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    document.getElementById('dateOfBirth').max = yesterday.toISOString().split('T')[0];
+    // Max date for DOB is 18 years ago today
+    const maxDob = new Date();
+    maxDob.setFullYear(maxDob.getFullYear() - 18);
+    document.getElementById('dateOfBirth').max = maxDob.toISOString().split('T')[0];
 
     document.getElementById('registerForm').addEventListener('submit', async (e) => {
       e.preventDefault();

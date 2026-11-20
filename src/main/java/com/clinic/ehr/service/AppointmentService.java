@@ -8,6 +8,7 @@ import com.clinic.ehr.exception.InvalidBookingException;
 import com.clinic.ehr.exception.ResourceNotFoundException;
 import com.clinic.ehr.exception.UnauthorizedAccessException;
 import com.clinic.ehr.model.Appointment;
+import com.clinic.ehr.model.MedicalRecord;
 import com.clinic.ehr.model.Doctor;
 import com.clinic.ehr.model.Patient;
 import com.clinic.ehr.model.User;
@@ -17,16 +18,21 @@ import com.clinic.ehr.model.enums.AuditEntityType;
 import com.clinic.ehr.model.enums.Role;
 import com.clinic.ehr.repository.AppointmentRepository;
 import com.clinic.ehr.repository.DoctorRepository;
+import com.clinic.ehr.repository.MedicalRecordRepository;
 import com.clinic.ehr.repository.PatientRepository;
 import com.clinic.ehr.repository.UserRepository;
 import com.clinic.ehr.service.booking.BookingContext;
 import com.clinic.ehr.service.booking.BookingRule;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,16 +51,26 @@ public class AppointmentService {
     private final DoctorRepository doctorRepository;
     private final PatientRepository patientRepository;
     private final UserRepository userRepository;
+    private final MedicalRecordRepository medicalRecordRepository;
     private final AuditService auditService;
     private final List<BookingRule> rules; // injected in @Order sequence
 
     public AppointmentService(AppointmentRepository appointmentRepository, DoctorRepository doctorRepository,
                               PatientRepository patientRepository, UserRepository userRepository,
                               AuditService auditService, List<BookingRule> rules) {
+        this(appointmentRepository, doctorRepository, patientRepository, userRepository, null, auditService, rules);
+    }
+
+    @Autowired
+    public AppointmentService(AppointmentRepository appointmentRepository, DoctorRepository doctorRepository,
+                              PatientRepository patientRepository, UserRepository userRepository,
+                              MedicalRecordRepository medicalRecordRepository,
+                              AuditService auditService, List<BookingRule> rules) {
         this.appointmentRepository = appointmentRepository;
         this.doctorRepository = doctorRepository;
         this.patientRepository = patientRepository;
         this.userRepository = userRepository;
+        this.medicalRecordRepository = medicalRecordRepository;
         this.auditService = auditService;
         this.rules = rules;
     }
@@ -140,10 +156,13 @@ public class AppointmentService {
 
     @Transactional(readOnly = true)
     public List<AppointmentResponse> listForDoctor(Long doctorId, LocalDate date, AppointmentStatus status) {
+        Map<Long, Long> recordByAppointment = (medicalRecordRepository == null) ? Collections.emptyMap() : medicalRecordRepository
+                .findByAppointmentDoctorIdOrderByCreatedAtDesc(doctorId).stream()
+                .collect(Collectors.toMap(r -> r.getAppointment().getId(), MedicalRecord::getId));
         return appointmentRepository.findByDoctorIdOrderByStartTimeDesc(doctorId).stream()
                 .filter(a -> status == null || a.getStatus() == status)
                 .filter(a -> date == null || a.getStartTime().toLocalDate().equals(date))
-                .map(AppointmentResponse::from)
+                .map(a -> AppointmentResponse.from(a, recordByAppointment.get(a.getId())))
                 .toList();
     }
 

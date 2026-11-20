@@ -1,14 +1,18 @@
 package com.clinic.ehr.service;
 
+import com.clinic.ehr.dto.UpdateUserRequest;
 import com.clinic.ehr.dto.UserResponse;
+import com.clinic.ehr.exception.DuplicateResourceException;
 import com.clinic.ehr.exception.InvalidBookingException;
 import com.clinic.ehr.exception.ResourceNotFoundException;
+import com.clinic.ehr.model.Doctor;
 import com.clinic.ehr.model.User;
 import com.clinic.ehr.model.enums.AuditAction;
 import com.clinic.ehr.model.enums.AuditEntityType;
 import com.clinic.ehr.model.enums.Role;
 import com.clinic.ehr.repository.UserRepository;
 import java.util.List;
+import java.util.Locale;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
@@ -44,6 +48,40 @@ public class UserService {
                 .stream()
                 .map(UserResponse::from)
                 .toList();
+    }
+
+    @Transactional
+    public UserResponse updateUser(Long userId, UpdateUserRequest req, Long adminId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
+        User admin = userRepository.findById(adminId)
+                .orElseThrow(() -> new ResourceNotFoundException("Admin not found: " + adminId));
+
+        String normalizedEmail = req.email().trim().toLowerCase(Locale.ROOT);
+        if (!normalizedEmail.equalsIgnoreCase(user.getEmail()) && userRepository.existsByEmail(normalizedEmail)) {
+            throw new DuplicateResourceException("Email already in use: " + normalizedEmail);
+        }
+
+        user.setFullName(req.fullName().trim());
+        user.setEmail(normalizedEmail);
+        user.setPhone(req.phone() != null && !req.phone().isBlank() ? req.phone().trim() : null);
+
+        if (user instanceof Doctor doc) {
+            if (req.specialization() != null && !req.specialization().isBlank()) {
+                doc.setSpecialization(req.specialization().trim());
+            }
+            if (req.qualification() != null) {
+                doc.setQualification(req.qualification().isBlank() ? null : req.qualification().trim());
+            }
+            if (req.slotMinutes() != null) {
+                doc.setSlotMinutes(req.slotMinutes());
+            }
+        }
+
+        auditService.record(admin, AuditAction.UPDATE, AuditEntityType.USER, userId,
+                "Updated profile for " + user.getEmail());
+        log.info("User {} updated by admin {}", userId, adminId);
+        return UserResponse.from(user);
     }
 
     @Transactional

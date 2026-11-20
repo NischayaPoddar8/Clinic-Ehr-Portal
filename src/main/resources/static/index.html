@@ -33,7 +33,7 @@
     <section class="hero">
       <h1>Healthcare Appointment &amp; EHR Portal</h1>
       <p>Secure, enterprise-grade consultation scheduling and Electronic Health Records management for patients, doctors, and clinic administrators.</p>
-      <div class="hero-actions">
+      <div id="heroActions" class="hero-actions">
         <a href="/login.html" class="btn btn-primary" style="background:#ffffff; color:#0369a1;">Sign In to Portal</a>
         <a href="/register.html" class="btn btn-outline" style="border-color:#ffffff; color:#ffffff;">New Patient Registration</a>
       </div>
@@ -72,6 +72,8 @@
       loggedInUser = await getCurrentUser();
       if (loggedInUser) {
         initNavbarUser(loggedInUser);
+        const heroActions = document.getElementById('heroActions');
+        if (heroActions) heroActions.style.display = 'none';
         const banner = document.getElementById('welcomeBanner');
         const msg = document.getElementById('welcomeMsg');
         const link = document.getElementById('dashboardLink');
@@ -123,9 +125,9 @@
       }
     }
 
-    window.addEventListener('DOMContentLoaded', () => {
-      checkAuth();
-      loadDoctors();
+    window.addEventListener('DOMContentLoaded', async () => {
+      await checkAuth();
+      await loadDoctors();
     });
   </script>
 </body>

@@ -4,6 +4,7 @@ import com.clinic.ehr.dto.AppointmentResponse;
 import com.clinic.ehr.dto.AuditLogResponse;
 import com.clinic.ehr.dto.ClinicStatsResponse;
 import com.clinic.ehr.dto.CreateDoctorRequest;
+import com.clinic.ehr.dto.UpdateUserRequest;
 import com.clinic.ehr.dto.UpdateUserStatusRequest;
 import com.clinic.ehr.dto.UserResponse;
 import com.clinic.ehr.model.enums.AppointmentStatus;
@@ -28,6 +29,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -80,6 +82,14 @@ public class AdminController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         return userService.listUsers(role, active, page, size);
+    }
+
+    @PutMapping("/users/{id}")
+    public UserResponse updateUser(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateUserRequest request,
+            @AuthenticationPrincipal CustomUserDetails admin) {
+        return userService.updateUser(id, request, admin.getId());
     }
 
     @PatchMapping("/users/{id}/status")

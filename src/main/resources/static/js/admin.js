@@ -2,6 +2,7 @@ let currentAdmin = null;
 let usersPage = 0;
 let apptsPage = 0;
 let auditPage = 0;
+let loadedUsersMap = new Map();
 const PAGE_SIZE = 15;
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -16,6 +17,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   document.getElementById('exportForm').addEventListener('submit', handleExportReport);
   document.getElementById('createDoctorForm').addEventListener('submit', handleCreateDoctor);
+  document.getElementById('editUserForm').addEventListener('submit', handleEditUserSubmit);
 
   await Promise.all([loadStats(), loadUsers(), loadAdminAppointments(), loadAuditLogs()]);
 });
@@ -133,16 +135,19 @@ async function loadUsers() {
 
   try {
     const users = await apiFetch(`/api/admin/users?${params.toString()}`);
+    loadedUsersMap.clear();
     const tbody = document.getElementById('usersTableBody');
     if (!users || users.length === 0) {
       tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">No users found.</td></tr>';
     } else {
       tbody.innerHTML = users.map(u => {
+        loadedUsersMap.set(u.id, u);
         const isSelf = currentAdmin && u.id === currentAdmin.id;
         const statusBadge = u.active
           ? '<span class="badge badge-completed">ACTIVE</span>'
           : '<span class="badge badge-cancelled">INACTIVE</span>';
-        const actionBtn = isSelf
+        const editBtn = `<button class="btn btn-secondary btn-sm" onclick="openEditUserModal(${u.id})">Edit</button>`;
+        const toggleBtn = isSelf
           ? '<span style="font-size:0.8rem; color:#64748b;">Current Admin</span>'
           : `<button class="btn ${u.active ? 'btn-danger' : 'btn-primary'} btn-sm" onclick="toggleUserStatus(${u.id}, ${!u.active})">${u.active ? 'Deactivate' : 'Activate'}</button>`;
         return `
@@ -153,7 +158,7 @@ async function loadUsers() {
             <td>${escapeHtml(u.phone || '-')}</td>
             <td>${getBadgeHtml(u.role)}</td>
             <td>${statusBadge}</td>
-            <td>${actionBtn}</td>
+            <td style="display:flex; gap:0.4rem; align-items:center;">${editBtn} ${toggleBtn}</td>
           </tr>
         `;
       }).join('');
@@ -163,6 +168,69 @@ async function loadUsers() {
     document.getElementById('usersNextBtn').disabled = !users || users.length < PAGE_SIZE;
   } catch (err) {
     showAlert('pageAlert', err.message || 'Failed to load users');
+  }
+}
+
+async function openEditUserModal(userId) {
+  const u = loadedUsersMap.get(userId);
+  if (!u) return;
+  document.getElementById('editUserId').value = u.id;
+  document.getElementById('editUserRole').value = u.role;
+  document.getElementById('editUserModalTitle').textContent = `Edit ${u.role} #${u.id}`;
+  document.getElementById('editUserFullName').value = u.fullName || '';
+  document.getElementById('editUserEmail').value = u.email || '';
+  document.getElementById('editUserPhone').value = u.phone || '';
+
+  const docBox = document.getElementById('editDoctorFields');
+  if (u.role === 'DOCTOR') {
+    docBox.style.display = 'block';
+    document.getElementById('editDocSpecialization').value = '';
+    document.getElementById('editDocQualification').value = '';
+    document.getElementById('editDocSlotMinutes').value = '';
+    try {
+      const doc = await apiFetch(`/api/doctors/${u.id}`);
+      document.getElementById('editDocSpecialization').value = doc.specialization || '';
+      document.getElementById('editDocQualification').value = doc.qualification || '';
+      document.getElementById('editDocSlotMinutes').value = doc.slotMinutes || 30;
+    } catch (_) {}
+  } else {
+    docBox.style.display = 'none';
+  }
+
+  document.getElementById('editUserModal').style.display = 'flex';
+}
+
+function closeEditUserModal() {
+  document.getElementById('editUserModal').style.display = 'none';
+}
+
+async function handleEditUserSubmit(e) {
+  e.preventDefault();
+  clearAlert('pageAlert');
+  const userId = document.getElementById('editUserId').value;
+  const role = document.getElementById('editUserRole').value;
+  const payload = {
+    fullName: document.getElementById('editUserFullName').value.trim(),
+    email: document.getElementById('editUserEmail').value.trim(),
+    phone: document.getElementById('editUserPhone').value.trim() || null
+  };
+
+  if (role === 'DOCTOR') {
+    const spec = document.getElementById('editDocSpecialization').value.trim();
+    const qual = document.getElementById('editDocQualification').value.trim();
+    const slotVal = document.getElementById('editDocSlotMinutes').value;
+    if (spec) payload.specialization = spec;
+    payload.qualification = qual;
+    if (slotVal) payload.slotMinutes = parseInt(slotVal, 10);
+  }
+
+  try {
+    await apiFetch(`/api/admin/users/${userId}`, { method: 'PUT', body: payload });
+    closeEditUserModal();
+    showAlert('pageAlert', `Updated user #${userId}.`, 'success');
+    await Promise.all([loadUsers(), loadAuditLogs()]);
+  } catch (err) {
+    showAlert('pageAlert', err.message || 'Failed to update user');
   }
 }
 
